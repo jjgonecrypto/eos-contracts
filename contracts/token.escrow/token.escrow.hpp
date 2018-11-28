@@ -5,14 +5,17 @@
 using std::string;
 
 namespace eosio {
-class [[eosio::contract("token.escrow")]] escrow : public contract {
+class[[eosio::contract("token.escrow")]] escrow : public contract {
 public:
   using contract::contract;
-  // escrow(name receiver, name code, datastream<const char *> ds)
-  //     : contract(receiver, code, ds){}
 
   [[eosio::action]] void add(string symbolStr, name user_to_whitelist);
   [[eosio::action]] void removeall(symbol sym);
+
+  // Any functionality that you want other contracts to use must be in the
+  // header file. Also, nothing in these functions can mutate the tables, that
+  // is a restriction of this approach. Instead you'd have to issue an action
+  // to this contract.
 
   bool is_user_in_whitelist(symbol sym, name user) {
     whitelist wlist(_self, sym.code().raw());
