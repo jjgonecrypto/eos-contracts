@@ -12,7 +12,7 @@ namespace eosio {
 /**
  * Adds a single user to the whitelist under the scope of the symbol
  */
-void escrow::add(string symbolStr, name user_to_whitelistelist) {
+void escrow::addwlistuser(string symbolStr, name user_to_whitelistelist) {
   require_auth(_self);
 
   symbol sym(symbolStr, 0);
@@ -25,8 +25,10 @@ void escrow::add(string symbolStr, name user_to_whitelistelist) {
 /**
  * Removes all users from the whitelist under the scope of the symbol
  */
-void escrow::removeall(symbol sym) {
+void escrow::removewlist(string symbolStr) {
   require_auth(_self);
+
+  symbol sym(symbolStr, 0);
 
   whitelist wlist(_self, sym.code().raw());
 
@@ -35,5 +37,13 @@ void escrow::removeall(symbol sym) {
   }
 }
 
+/**
+ * Adds an escrow period.
+ */
+void escrow::addperiod(string symbolStr, time_point from_time,
+                       uint64_t fraction_can_transfer) {
+  require_auth(_self);
+}
+
 } // namespace eosio
-EOSIO_DISPATCH(eosio::escrow, (add)(removeall));
+EOSIO_DISPATCH(eosio::escrow, (addwlistuser)(removewlist));

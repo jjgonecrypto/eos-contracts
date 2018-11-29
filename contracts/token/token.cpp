@@ -8,16 +8,21 @@ using std::string;
 using namespace boost;
 
 /**
- * An extremely watered down eosio.token contract, simply to demonstrate the interaciton with a separate contract
- * that stores state we want to query at runtime.
+ * An extremely watered down eosio.token contract, simply to demonstrate the
+ * interaciton with a separate contract that stores state we want to query at
+ * runtime.
  */
 
 namespace eosio {
 
-
 void token::transfer(name from, name to, asset quantity) {
   eosio_assert(_escrow.is_user_in_whitelist(quantity.symbol, from),
                "Only whitelisted users can transfer");
+
+  const auto fraction =
+      _escrow.what_fraction_can_user_transfer(quantity.symbol, from);
+  print("fraction is ", fraction, "\n");
+  eosio_assert(fraction > 0, "Must be able to transfer something");
 }
 
 } // namespace eosio
