@@ -1,6 +1,6 @@
 # Escrow
 
-This is an example of an escrow holder. Any `eosio.tokens` can be transferred in,
+This is an example of an escrow holder with vesting schedule. Any given tokens can be transferred in,
 and the contract will hold them until vesting is invoked, distributing the percentage back that is owed to the user.
 
 ## Steps
