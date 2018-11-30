@@ -1,8 +1,7 @@
-
 #include <eosiolib/asset.hpp>
 #include <eosiolib/eosio.hpp>
 
-#include "token.hpp"
+#include "wlist.token.hpp"
 
 using std::string;
 using namespace boost;
@@ -16,13 +15,10 @@ using namespace boost;
 namespace eosio {
 
 void token::transfer(name from, name to, asset quantity) {
-  eosio_assert(_escrow.is_user_in_whitelist(quantity.symbol, from),
+  eosio_assert(_whitelist.is_user_in_whitelist(quantity.symbol, from),
                "Only whitelisted users can transfer");
 
-  const auto fraction =
-      _escrow.what_fraction_can_user_transfer(quantity.symbol, from);
-  print("fraction is ", fraction, "\n");
-  eosio_assert(fraction > 0, "Must be able to transfer something");
+  print("OK you can transfer");
 }
 
 } // namespace eosio
