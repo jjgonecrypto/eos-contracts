@@ -7,7 +7,7 @@ and the contract will hold them until vesting is invoked, distributing the perce
 
 1. compile contract `eosio-cpp -o escrow.wasm --abigen escrow.cpp`
 
-1. create accounts for both `escrow`
+1. create account for `escrow`
 
 1. deploy contract under `escrow` account
 
