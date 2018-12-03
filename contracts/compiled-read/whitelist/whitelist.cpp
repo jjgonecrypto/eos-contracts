@@ -11,10 +11,10 @@ namespace eosio {
 /**
  * Adds a single user to the whitelist under the scope of the symbol
  */
-void whitelist::add(string symbolStr, name user) {
+void whitelist::add(string symbol_str, name user) {
   require_auth(_self);
 
-  symbol sym(symbolStr, 0);
+  symbol sym(symbol_str, 0);
 
   wlist wl(_self, sym.code().raw());
 
@@ -24,10 +24,10 @@ void whitelist::add(string symbolStr, name user) {
 /**
  * Removes all users from the whitelist under the scope of the symbol
  */
-void whitelist::removeall(string symbolStr) {
+void whitelist::removeall(string symbol_str) {
   require_auth(_self);
 
-  symbol sym(symbolStr, 0);
+  symbol sym(symbol_str, 0);
 
   wlist wl(_self, sym.code().raw());
 
