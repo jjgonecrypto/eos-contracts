@@ -99,6 +99,9 @@ void escrow::vest(string symbol_str) {
 
   eosio_assert(period.fraction() > 0, "Nothing is currently vestable.");
 
+  eosio_assert(period.fraction() <= 1.0,
+               "Vesting fraction must be less than 1.");
+
   holders hldrs(_self, sym.code().raw());
   for (auto itr = hldrs.begin(); itr != hldrs.end(); itr++) {
     auto user = itr->account;
@@ -110,7 +113,7 @@ void escrow::vest(string symbol_str) {
           (account->total_escrowed * period.numerator / period.denominator) -
           (account->total_escrowed - account->remaining);
       acc.modify(account, _self,
-                 [&](auto &a) { a.remaining = a.remaining - amount; });
+                 [&](auto &a) { a.remaining = a.remaining - quantity; });
     }
     if (quantity.amount > 0) {
       // TODO issue a token transfer to the user
