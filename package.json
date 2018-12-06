@@ -1,0 +1,24 @@
+{
+  "name": "eos-contracts",
+  "version": "1.0.0",
+  "description": "Some sample EOS contracts. Nodejs for testing",
+  "main": "index.js",
+  "dependencies": {},
+  "devDependencies": {
+    "eosjs-node": "~0.1.0",
+    "jest": "~23.6.0"
+  },
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/justinjmoses/eos-contracts.git"
+  },
+  "author": "justin j. moses <justinjmoses@gmail.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/justinjmoses/eos-contracts/issues"
+  },
+  "homepage": "https://github.com/justinjmoses/eos-contracts#readme"
+}
