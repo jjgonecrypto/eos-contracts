@@ -1,71 +1,157 @@
-"use strict";
+'use strict';
 
-const expect = require("chai").expect;
-const path = require("path");
-const eos = require("eosjs-node").connect({ url: "http://127.0.0.1:7777" });
+const expect = require('chai').expect;
+const path = require('path');
+const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
 
-// describe('escrow', () => {
-//   jest.setTimeout(20e3);
+// actions
+// addperiod '["JAYS", 1514764800000, 2, 4]' -p escrow
+// addperiod '["JAYS", 1536300800000, 1, 4]' -p escrow
+// addperiod '["JAYS", 1546300800000, 1, 4]' -p escrow
 
-//   const account = 'token.test.1';
+// addaccount '["user1","100 JAYS"]' -p escrow
+// addaccount '["user2","10.51 JAYS"]' -p escrow
 
-//   // deploy contract
-//   beforeAll(async () => {
-//     await eos.createAccount({ account });
-//     await eos.deploy({
-//       account,
-//       contract: 'eosio.token',
-//       contractDir: path.join(__dirname, '..', 'build'),
-//     });
-//   });
+// vest '["JAYS"]' -p escrow
 
-//   describe('create action', () => {
-//     const maxSupply = '100';
-//     const decimals = '000';
-//     const max = `${maxSupply}.${decimals}`;
-//     // using the same symbol as a pre-existing one will fail
-//     // (once the preexiting one is committed to the blockchain)
-//     const symbol = 'TESTSXE';
-//     const reNumDecimals = new RegExp(`\\.0{${decimals.length}}\\s`);
+describe('escrow', () => {
+  jest.setTimeout(20e3);
 
-//     describe(`when creating ${max} ${symbol}`, () => {
-//       let response;
-//       beforeAll(async () => {
-//         const createTokenAction = eos.createAction({
-//           name: 'create',
-//           account,
-//           actor: account,
-//           data: { maximum_supply: `${max} ${symbol}`, issuer: 'eosio' },
-//         });
+  const account = 'escrow';
+  const symbol = 'JAYS';
 
-//         await eos.sendTransaction(createTokenAction);
+  // deploy contract
+  beforeAll(async () => {
+    await eos.createAccount({ account });
+    await eos.deploy({
+      account,
+      contractDir: path.join(__dirname, '..', '..', '..', 'contracts', 'escrow'),
+    });
+  });
 
-//         response = (await eos.api.rpc.get_currency_stats(account, symbol))[symbol];
-//       });
+  describe('addperiod', () => {
+    // error states
+    describe('when attempted by a user not the contract itself', () => {});
+    describe('when an account already exists', () => {
+      describe('and a period is added', () => {});
+    });
+    describe('when a period is set to 8/12', () => {
+      describe('and another period is added with a different denomiator', () => {});
+    });
 
-//       test('then the currency stats are available', () => {
-//         expect(response).to.be.an('object');
-//       });
-
-//       test('and the issuer is eosio', () => {
-//         expect(response.issuer).to.equal('eosio');
-//       });
-
-//       test('and the supply is empty', () => {
-//         expect(response.supply).to.match(/^0\./);
-//       });
-
-//       test('with the correct number of decimals', () => {
-//         expect(response.supply).to.match(reNumDecimals);
-//       });
-
-//       test('and the max supply is correct', () => {
-//         expect(response.max_supply).to.match(new RegExp(`^${maxSupply}\\.`));
-//       });
-
-//       test('with the correct number of decimals', () => {
-//         expect(response.max_supply).to.match(reNumDecimals);
-//       });
-//     });
-//   });
-// });
+    // success states
+    describe('when a period of 2/4 has been added for four weeks ago', () => {
+      beforeEach(async () => {
+        await eos.sendTransaction(
+          eos.createAction({
+            name: 'addperiod',
+            account,
+            actor: account,
+            data: {
+              symbol_str: symbol,
+              timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+              numerator: 2,
+              denominator: 4,
+            },
+          })
+        );
+      });
+      describe('when a period of 1/4 has been added for a week ago', () => {
+        beforeEach(async () => {
+          await eos.sendTransaction(
+            eos.createAction({
+              name: 'addperiod',
+              account,
+              actor: account,
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                numerator: 1,
+                denominator: 4,
+              },
+            })
+          );
+        });
+        describe('when a period of 1/4 has been added for next week', () => {
+          beforeEach(async () => {
+            await eos.sendTransaction(
+              eos.createAction({
+                name: 'addperiod',
+                account,
+                actor: account,
+                data: {
+                  symbol_str: symbol,
+                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                  numerator: 1,
+                  denominator: 4,
+                },
+              })
+            );
+          });
+          describe('when a user1 is added with 100 tokens', () => {
+            beforeEach(async () => {
+              await eos.sendTransaction(
+                eos.createAction({
+                  name: 'addaccount',
+                  account,
+                  actor: account,
+                  data: {
+                    user: 'user1',
+                    total: `100 ${symbol}`,
+                  },
+                })
+              );
+            });
+            describe('when the currency balance is fetched', () => {
+              let response;
+              beforeEach(async () => {
+                [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+              });
+              test('then getting their currency balance must show the correct amount', () => {
+                expect(response).to.equal(`100 ${symbol}`);
+              });
+            });
+            describe('when user2 is added with 10.51 tokens', () => {
+              beforeEach(async () => {
+                await eos.sendTransaction(
+                  eos.createAction({
+                    name: 'addaccount',
+                    account,
+                    actor: account,
+                    data: {
+                      user: 'user2',
+                      total: `10.51 ${symbol}`,
+                    },
+                  })
+                );
+              });
+              describe('when vest is called', () => {
+                beforeEach(async () => {
+                  await eos.sendTransaction(
+                    eos.createAction({
+                      name: 'vest',
+                      account,
+                      actor: account,
+                      data: {
+                        symbol_str: symbol,
+                      },
+                    })
+                  );
+                });
+                describe('when the currency balance is fetched', () => {
+                  let response;
+                  beforeEach(async () => {
+                    [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+                  });
+                  test('then getting their currency balance must show the correct amount', () => {
+                    expect(response).to.equal(`100 ${symbol}`);
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
