@@ -41,7 +41,7 @@ describe('escrow', () => {
 
     // success states
     describe('when a period of 2/4 has been added for four weeks ago', () => {
-      beforeEach(async () => {
+      beforeAll(async () => {
         await eos.sendTransaction(
           eos.createAction({
             name: 'addperiod',
@@ -57,7 +57,7 @@ describe('escrow', () => {
         );
       });
       describe('when a period of 1/4 has been added for a week ago', () => {
-        beforeEach(async () => {
+        beforeAll(async () => {
           await eos.sendTransaction(
             eos.createAction({
               name: 'addperiod',
@@ -73,7 +73,7 @@ describe('escrow', () => {
           );
         });
         describe('when a period of 1/4 has been added for next week', () => {
-          beforeEach(async () => {
+          beforeAll(async () => {
             await eos.sendTransaction(
               eos.createAction({
                 name: 'addperiod',
@@ -81,7 +81,7 @@ describe('escrow', () => {
                 actor: account,
                 data: {
                   symbol_str: symbol,
-                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                  timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
                   numerator: 1,
                   denominator: 4,
                 },
@@ -89,7 +89,7 @@ describe('escrow', () => {
             );
           });
           describe('when a user1 is added with 100 tokens', () => {
-            beforeEach(async () => {
+            beforeAll(async () => {
               await eos.sendTransaction(
                 eos.createAction({
                   name: 'addaccount',
@@ -104,7 +104,7 @@ describe('escrow', () => {
             });
             describe('when the currency balance is fetched', () => {
               let response;
-              beforeEach(async () => {
+              beforeAll(async () => {
                 [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
               });
               test('then getting their currency balance must show the correct amount', () => {
@@ -112,7 +112,7 @@ describe('escrow', () => {
               });
             });
             describe('when user2 is added with 10.51 tokens', () => {
-              beforeEach(async () => {
+              beforeAll(async () => {
                 await eos.sendTransaction(
                   eos.createAction({
                     name: 'addaccount',
@@ -126,7 +126,7 @@ describe('escrow', () => {
                 );
               });
               describe('when vest is called', () => {
-                beforeEach(async () => {
+                beforeAll(async () => {
                   await eos.sendTransaction(
                     eos.createAction({
                       name: 'vest',
@@ -138,13 +138,45 @@ describe('escrow', () => {
                     })
                   );
                 });
-                describe('when the currency balance is fetched', () => {
+                describe('when the currency balance is fetched for user1', () => {
                   let response;
-                  beforeEach(async () => {
+                  beforeAll(async () => {
                     [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
                   });
-                  test('then getting their currency balance must show the correct amount', () => {
-                    expect(response).to.equal(`100 ${symbol}`);
+                  test('then their balance must show the correct amount of 1/4 remaining', () => {
+                    expect(response).to.equal(`25 ${symbol}`);
+                  });
+                });
+                describe('when the currency balance is fetched for user2', () => {
+                  let response;
+                  beforeAll(async () => {
+                    [response] = await eos.api.rpc.get_currency_balance(account, 'user2');
+                  });
+                  test('then their balance must show the correct amount of 1/4 remaining', () => {
+                    expect(response).to.equal(`2.63 ${symbol}`);
+                  });
+                });
+                describe('when vest is called again', () => {
+                  beforeAll(async () => {
+                    await eos.sendTransaction(
+                      eos.createAction({
+                        name: 'vest',
+                        account,
+                        actor: account,
+                        data: {
+                          symbol_str: symbol,
+                        },
+                      })
+                    );
+                  });
+                  describe('when the currency balance is fetched', () => {
+                    let response;
+                    beforeAll(async () => {
+                      [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+                    });
+                    test('then getting their currency balance must show the same amount', () => {
+                      expect(response).to.equal(`25 ${symbol}`);
+                    });
                   });
                 });
               });
