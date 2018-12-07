@@ -1,5 +1,7 @@
 # EOS Contracts
 
+[![CircleCI](https://circleci.com/gh/justinjmoses/eos-contracts.svg?style=svg)](https://circleci.com/gh/justinjmoses/eos-contracts)
+
 A collection of EOS smart contracts that interact with each other. This is meant purely as a proof of concept for contract interaction on EOS.
 
 ## Preparation

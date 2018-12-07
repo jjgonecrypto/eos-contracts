@@ -1,0 +1,65 @@
+version: 2
+jobs:
+  prepare:
+    docker:
+      - image: 'circleci/node:8.11'
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - 'v1.0-dependencies-{{ checksum "package.json" }}'
+            - v1.0-dependencies-
+      - run: npm install
+      - run: npm run lint
+      - save_cache:
+          paths:
+            - node_modules
+          key: 'v1.0-dependencies-{{ checksum "package.json" }}'
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules
+  compile:
+    docker:
+      - image: 'justinjmoses/eosio-ci:1.4.4'
+    steps:
+      - checkout
+      - run: git submodule update --init --recursive
+      - attach_workspace:
+          at: .
+      - run: ./scripts/compile-contracts-locally.sh
+      - persist_to_workspace:
+          root: .
+          paths:
+            - node_modules
+            - build
+  test:
+    docker:
+      - image: 'circleci/node:8.11'
+      - image: 'justinjmoses/eosio-ci:1.4.4'
+        command:
+          - /start-keosd.sh
+      - image: 'justinjmoses/eosio-ci:1.4.4'
+        command:
+          - /start-nodeos.sh
+    steps:
+      - checkout
+      - attach_workspace:
+          at: .
+      - run: ls -lat
+      - run: ls -lat node_modules
+      - run: ls -lat build
+      - run: 'curl http://localhost:5555'
+      - run: 'curl http://localhost:7777/v1/chain/get_info'
+      - run: npm test
+workflows:
+  version: 2
+  dev:
+    jobs:
+      - prepare
+      - compile:
+          requires:
+            - prepare
+      - test:
+          requires:
+            - compile
