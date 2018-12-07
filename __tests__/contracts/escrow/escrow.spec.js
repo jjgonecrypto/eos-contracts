@@ -7,7 +7,8 @@ const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
 describe('escrow', () => {
   jest.setTimeout(20e3);
 
-  const account = 'escrow';
+  const account = eos.generateAccountName();
+  const contract = 'escrow';
   const symbol = 'JAYS';
 
   const sendTransaction = async ({ name, data }) => {
@@ -26,6 +27,7 @@ describe('escrow', () => {
     await eos.createAccount({ account });
     await eos.deploy({
       account,
+      contract,
       contractDir: path.join(__dirname, '..', '..', '..', 'contracts', 'escrow'),
     });
   });

@@ -8,7 +8,7 @@
     "babel-eslint": "~10.0.1",
     "chai": "~4.2.0",
     "eosio-ci": "~1.4.5-2",
-    "eosjs-node": "~0.1.0",
+    "eosjs-node": "~0.1.1",
     "eslint": "~5.9.0",
     "eslint-config-last": "0.0.5",
     "eslint-config-prettier": "~3.3.0",

@@ -8,7 +8,7 @@ using namespace boost;
 
 /**
  * An extremely watered down eosio.token contract, simply to demonstrate the
- * interaciton with a separate contract that stores state we want to query at
+ * interaction with a separate contract that stores state we want to query at
  * runtime.
  */
 
