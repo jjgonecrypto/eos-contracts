@@ -24,7 +24,6 @@ jobs:
       - image: 'justinjmoses/eosio-ci:1.4.4'
     steps:
       - checkout
-      - run: git submodule update --init --recursive
       - attach_workspace:
           at: .
       - run: ./scripts/compile-contracts-locally.sh
@@ -32,7 +31,7 @@ jobs:
           root: .
           paths:
             - node_modules
-            - build
+            - contracts
   test:
     docker:
       - image: 'circleci/node:8.11'
@@ -46,9 +45,6 @@ jobs:
       - checkout
       - attach_workspace:
           at: .
-      - run: ls -lat
-      - run: ls -lat node_modules
-      - run: ls -lat build
       - run: 'curl http://localhost:5555'
       - run: 'curl http://localhost:7777/v1/chain/get_info'
       - run: npm test
