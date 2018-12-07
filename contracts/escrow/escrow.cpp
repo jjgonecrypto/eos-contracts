@@ -61,10 +61,29 @@ void escrow::delperiods(string symbol_str) {
   }
 }
 
-// TODO
-// void escrow::delaccounts(string symbol_str) {
-// require_auth(_self);
-// }
+/**
+ * Removes an account entry
+ */
+void escrow::delaccount(name user, string symbol_str) {
+  require_auth(_self);
+
+  symbol sym(symbol_str, 0);
+
+  accounts acc(_self, user.value);
+
+  auto a = acc.find(sym.code().raw());
+
+  eosio_assert(
+      a->remaining.amount == 0,
+      "Cannot remove a user account who still has a remaining balance");
+
+  acc.erase(a);
+
+  // now remove the account name from the tracker
+  holders hldrs(_self, sym.code().raw());
+  auto huser = hldrs.find(user.value);
+  hldrs.erase(huser);
+}
 
 /**
  * Adds an escrow account entry

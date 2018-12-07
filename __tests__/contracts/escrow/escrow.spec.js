@@ -4,22 +4,23 @@ const expect = require('chai').expect;
 const path = require('path');
 const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
 
-// actions
-// addperiod '["JAYS", 1514764800000, 2, 4]' -p escrow
-// addperiod '["JAYS", 1536300800000, 1, 4]' -p escrow
-// addperiod '["JAYS", 1546300800000, 1, 4]' -p escrow
-
-// addaccount '["user1","100 JAYS"]' -p escrow
-// addaccount '["user2","10.51 JAYS"]' -p escrow
-
-// vest '["JAYS"]' -p escrow
-
 describe('escrow', () => {
   jest.setTimeout(20e3);
 
   const account = 'escrow';
   const symbol = 'JAYS';
 
+  const sendTransaction = async ({ name, data }) => {
+    console.log(`Issuing action: ${name}`);
+    return await eos.sendTransaction(
+      eos.createAction({
+        name,
+        account,
+        actor: account,
+        data,
+      })
+    );
+  };
   // deploy contract
   beforeAll(async () => {
     await eos.createAccount({ account });
@@ -42,65 +43,57 @@ describe('escrow', () => {
     // success states
     describe('when a period of 2/4 has been added for four weeks ago', () => {
       beforeAll(async () => {
-        await eos.sendTransaction(
-          eos.createAction({
-            name: 'addperiod',
-            account,
-            actor: account,
-            data: {
-              symbol_str: symbol,
-              timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
-              numerator: 2,
-              denominator: 4,
-            },
-          })
-        );
+        await sendTransaction({
+          name: 'addperiod',
+          data: {
+            symbol_str: symbol,
+            timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+            numerator: 2,
+            denominator: 4,
+          },
+        });
+      });
+      afterAll(async () => {
+        await sendTransaction({
+          name: 'delperiods',
+          data: {
+            symbol_str: symbol,
+          },
+        });
       });
       describe('when a period of 1/4 has been added for a week ago', () => {
         beforeAll(async () => {
-          await eos.sendTransaction(
-            eos.createAction({
-              name: 'addperiod',
-              account,
-              actor: account,
-              data: {
-                symbol_str: symbol,
-                timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
-                numerator: 1,
-                denominator: 4,
-              },
-            })
-          );
+          await sendTransaction({
+            name: 'addperiod',
+            data: {
+              symbol_str: symbol,
+              timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+              numerator: 1,
+              denominator: 4,
+            },
+          });
         });
         describe('when a period of 1/4 has been added for next week', () => {
           beforeAll(async () => {
-            await eos.sendTransaction(
-              eos.createAction({
-                name: 'addperiod',
-                account,
-                actor: account,
-                data: {
-                  symbol_str: symbol,
-                  timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
-                  numerator: 1,
-                  denominator: 4,
-                },
-              })
-            );
+            await sendTransaction({
+              name: 'addperiod',
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
+                numerator: 1,
+                denominator: 4,
+              },
+            });
           });
           describe('when a user1 is added with 100 tokens', () => {
             beforeAll(async () => {
-              await eos.sendTransaction(
-                eos.createAction({
-                  name: 'addaccount',
-                  account,
-                  actor: account,
-                  data: {
-                    user: 'user1',
-                    total: `100 ${symbol}`,
-                  },
-                })
-              );
+              await sendTransaction({
+                name: 'addaccount',
+                data: {
+                  user: 'user1',
+                  total: `100 ${symbol}`,
+                },
+              });
             });
             describe('when the currency balance is fetched', () => {
               let response;
@@ -113,30 +106,22 @@ describe('escrow', () => {
             });
             describe('when user2 is added with 10.51 tokens', () => {
               beforeAll(async () => {
-                await eos.sendTransaction(
-                  eos.createAction({
-                    name: 'addaccount',
-                    account,
-                    actor: account,
-                    data: {
-                      user: 'user2',
-                      total: `10.51 ${symbol}`,
-                    },
-                  })
-                );
+                await sendTransaction({
+                  name: 'addaccount',
+                  data: {
+                    user: 'user2',
+                    total: `10.51 ${symbol}`,
+                  },
+                });
               });
               describe('when vest is called', () => {
                 beforeAll(async () => {
-                  await eos.sendTransaction(
-                    eos.createAction({
-                      name: 'vest',
-                      account,
-                      actor: account,
-                      data: {
-                        symbol_str: symbol,
-                      },
-                    })
-                  );
+                  await sendTransaction({
+                    name: 'vest',
+                    data: {
+                      symbol_str: symbol,
+                    },
+                  });
                 });
                 describe('when the currency balance is fetched for user1', () => {
                   let response;
@@ -158,16 +143,12 @@ describe('escrow', () => {
                 });
                 describe('when vest is called again', () => {
                   beforeAll(async () => {
-                    await eos.sendTransaction(
-                      eos.createAction({
-                        name: 'vest',
-                        account,
-                        actor: account,
-                        data: {
-                          symbol_str: symbol,
-                        },
-                      })
-                    );
+                    await sendTransaction({
+                      name: 'vest',
+                      data: {
+                        symbol_str: symbol,
+                      },
+                    });
                   });
                   describe('when the currency balance is fetched', () => {
                     let response;
