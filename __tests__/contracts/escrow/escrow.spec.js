@@ -11,17 +11,21 @@ describe('escrow', () => {
   const contract = 'escrow';
   const symbol = 'JAYS';
 
-  const sendTransaction = async ({ name, data }) => {
-    console.log(`Issuing action: ${name}`);
+  const sendTransaction = async actions => {
+    actions = Array.isArray(actions) ? actions : [actions];
     return await eos.sendTransaction(
-      eos.createAction({
-        name,
-        account,
-        actor: account,
-        data,
+      actions.map(({ name, data }) => {
+        console.log(`Issuing action: ${name}`);
+        return eos.createAction({
+          name,
+          account,
+          actor: account,
+          data,
+        });
       })
     );
   };
+
   // deploy contract
   beforeAll(async () => {
     await eos.createAccount({ account });
@@ -44,49 +48,48 @@ describe('escrow', () => {
 
     // success states
     describe('when a period of 2/4 has been added for four weeks ago', () => {
-      beforeAll(async () => {
-        await sendTransaction({
-          name: 'addperiod',
-          data: {
-            symbol_str: symbol,
-            timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
-            numerator: 2,
-            denominator: 4,
-          },
-        });
-      });
-      afterAll(async () => {
-        await sendTransaction({
-          name: 'delperiods',
-          data: {
-            symbol_str: symbol,
-          },
-        });
-      });
-      describe('when a period of 1/4 has been added for a week ago', () => {
-        beforeAll(async () => {
-          await sendTransaction({
-            name: 'addperiod',
-            data: {
-              symbol_str: symbol,
-              timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
-              numerator: 1,
-              denominator: 4,
-            },
-          });
-        });
-        describe('when a period of 1/4 has been added for next week', () => {
+      describe('and a period of 1/4 has been added for a week ago', () => {
+        describe('and a period of 1/4 has been added for a week in the future', () => {
           beforeAll(async () => {
+            await sendTransaction([
+              {
+                name: 'addperiod',
+                data: {
+                  symbol_str: symbol,
+                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+                  numerator: 2,
+                  denominator: 4,
+                },
+              },
+              {
+                name: 'addperiod',
+                data: {
+                  symbol_str: symbol,
+                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                  numerator: 1,
+                  denominator: 4,
+                },
+              },
+              {
+                name: 'addperiod',
+                data: {
+                  symbol_str: symbol,
+                  timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
+                  numerator: 1,
+                  denominator: 4,
+                },
+              },
+            ]);
+          });
+          afterAll(async () => {
             await sendTransaction({
-              name: 'addperiod',
+              name: 'delperiods',
               data: {
                 symbol_str: symbol,
-                timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
-                numerator: 1,
-                denominator: 4,
               },
             });
           });
+
           describe('when a user1 is added with 100 tokens', () => {
             beforeAll(async () => {
               await sendTransaction({
