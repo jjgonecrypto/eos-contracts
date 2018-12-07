@@ -46,78 +46,120 @@ describe('escrow', () => {
       describe('and another period is added with a different denomiator', () => {});
     });
 
-    // success states
+    // when user exists
+    describe('when a user1 is added with 100 tokens', () => {
+      beforeAll(async () => {
+        await sendTransaction({
+          name: 'addaccount',
+          data: {
+            user: 'user1',
+            total: `100 ${symbol}`,
+          },
+        });
+      });
+      afterAll(async () => {
+        await sendTransaction({
+          name: 'wipeall',
+          data: {
+            symbol_str: symbol,
+          },
+        });
+      });
+      describe('when the currency balance is fetched', () => {
+        let response;
+        beforeAll(async () => {
+          [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+        });
+        test('then getting their currency balance must show the correct amount', () => {
+          expect(response).to.equal(`100 ${symbol}`);
+        });
+      });
+      describe('when vest is called', () => {
+        let promise;
+        beforeAll(() => {
+          promise = sendTransaction({
+            name: 'vest',
+            data: {
+              symbol_str: symbol,
+            },
+          });
+        });
+        test('then it fails as there is no vesting period', done => {
+          promise
+            .then(() => done('Should have failed'))
+            .catch(err => {
+              expect(err.message).to.contain('Nothing is currently vestable');
+              done();
+            });
+        });
+      });
+    });
+    // when periods exist
     describe('when a period of 2/4 has been added for four weeks ago', () => {
       describe('and a period of 1/4 has been added for a week ago', () => {
         describe('and a period of 1/4 has been added for a week in the future', () => {
-          beforeAll(async () => {
-            await sendTransaction([
-              {
-                name: 'addperiod',
-                data: {
-                  symbol_str: symbol,
-                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
-                  numerator: 2,
-                  denominator: 4,
-                },
-              },
-              {
-                name: 'addperiod',
-                data: {
-                  symbol_str: symbol,
-                  timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
-                  numerator: 1,
-                  denominator: 4,
-                },
-              },
-              {
-                name: 'addperiod',
-                data: {
-                  symbol_str: symbol,
-                  timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
-                  numerator: 1,
-                  denominator: 4,
-                },
-              },
-            ]);
-          });
-          afterAll(async () => {
-            await sendTransaction({
-              name: 'delperiods',
-              data: {
-                symbol_str: symbol,
-              },
-            });
-          });
-
           describe('when a user1 is added with 100 tokens', () => {
-            beforeAll(async () => {
-              await sendTransaction({
-                name: 'addaccount',
-                data: {
-                  user: 'user1',
-                  total: `100 ${symbol}`,
-                },
-              });
-            });
-            describe('when the currency balance is fetched', () => {
-              let response;
-              beforeAll(async () => {
-                [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
-              });
-              test('then getting their currency balance must show the correct amount', () => {
-                expect(response).to.equal(`100 ${symbol}`);
-              });
-            });
             describe('when user2 is added with 10.51 tokens', () => {
               beforeAll(async () => {
-                await sendTransaction({
-                  name: 'addaccount',
-                  data: {
-                    user: 'user2',
-                    total: `10.51 ${symbol}`,
+                await sendTransaction([
+                  {
+                    name: 'addperiod',
+                    data: {
+                      symbol_str: symbol,
+                      timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+                      numerator: 2,
+                      denominator: 4,
+                    },
                   },
-                });
+                  {
+                    name: 'addperiod',
+                    data: {
+                      symbol_str: symbol,
+                      timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                      numerator: 1,
+                      denominator: 4,
+                    },
+                  },
+                  {
+                    name: 'addperiod',
+                    data: {
+                      symbol_str: symbol,
+                      timestamp: new Date().getTime() + 1000 * 3600 * 24 * 7,
+                      numerator: 1,
+                      denominator: 4,
+                    },
+                  },
+                  {
+                    name: 'addaccount',
+                    data: {
+                      user: 'user1',
+                      total: `100 ${symbol}`,
+                    },
+                  },
+                  {
+                    name: 'addaccount',
+                    data: {
+                      user: 'user2',
+                      total: `10.51 ${symbol}`,
+                    },
+                  },
+                ]);
+              });
+              afterAll(async () => {
+                await sendTransaction(
+                  {
+                    name: 'delperiods',
+                    data: {
+                      symbol_str: symbol,
+                    },
+                  },
+                  {
+                    name: 'wipeall',
+                    data: {
+                      symbol_str: symbol,
+                    },
+                  }
+                );
               });
               describe('when vest is called', () => {
                 beforeAll(async () => {
@@ -155,13 +197,22 @@ describe('escrow', () => {
                       },
                     });
                   });
-                  describe('when the currency balance is fetched', () => {
+                  describe('when the currency balance is fetched again for user1', () => {
                     let response;
                     beforeAll(async () => {
                       [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
                     });
-                    test('then getting their currency balance must show the same amount', () => {
+                    test('then getting their currency balance must be unchanged', () => {
                       expect(response).to.equal(`25 ${symbol}`);
+                    });
+                  });
+                  describe('when the currency balance is fetched again for user2', () => {
+                    let response;
+                    beforeAll(async () => {
+                      [response] = await eos.api.rpc.get_currency_balance(account, 'user2');
+                    });
+                    test('then their balance must be unchanged', () => {
+                      expect(response).to.equal(`2.63 ${symbol}`);
                     });
                   });
                 });

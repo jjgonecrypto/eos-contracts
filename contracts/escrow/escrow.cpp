@@ -86,6 +86,22 @@ void escrow::delaccount(name user, string symbol_str) {
 }
 
 /**
+ * Completely remove all accounts from the contract state
+ */
+void escrow::wipeall(string symbol_str) {
+  require_auth(_self);
+
+  symbol sym(symbol_str, 0);
+
+  // now remove the account name from the tracker
+  holders hldrs(_self, sym.code().raw());
+  for (auto itr = hldrs.begin(); itr != hldrs.end();) {
+    accounts acc(_self, itr->account.value);
+    acc.erase(acc.find(sym.code().raw()));
+    itr = hldrs.erase(itr);
+  }
+}
+/**
  * Adds an escrow account entry
  */
 void escrow::addaccount(name user, asset total) {
@@ -142,7 +158,8 @@ void escrow::vest(string symbol_str) {
 }
 
 } // namespace eosio
-EOSIO_DISPATCH(eosio::escrow, (addperiod)(delperiods)(addaccount)(vest));
+EOSIO_DISPATCH(eosio::escrow,
+               (addperiod)(delperiods)(addaccount)(vest)(wipeall));
 
 /*
 extern "C" { \

@@ -24,6 +24,7 @@ public:
   [[eosio::action]] void delperiods(string symbol_str);
   [[eosio::action]] void addaccount(name user, asset total);
   [[eosio::action]] void delaccount(name user, string symbol_str);
+  [[eosio::action]] void wipeall(string symbol_str);
   [[eosio::action]] void vest(string symbol_str);
 
 private:
