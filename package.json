@@ -15,6 +15,7 @@
     "eslint-plugin-import": "~2.14.0",
     "eslint-plugin-prettier": "~3.0.0",
     "jest": "~23.6.0",
+    "jest-circus": "~23.6.0",
     "prettier": "~1.15.3"
   },
   "scripts": {
@@ -30,6 +31,9 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/justinjmoses/eos-contracts.git"
+  },
+  "jest": {
+    "testRunner": "jest-circus/runner"
   },
   "author": "justin j. moses <justinjmoses@gmail.com>",
   "license": "MIT",

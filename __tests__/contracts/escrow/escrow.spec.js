@@ -4,6 +4,9 @@ const expect = require('chai').expect;
 const path = require('path');
 const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
 
+// Using jest-circus test runner to ensure (before|after)All don't run in skipped
+// blocks
+
 describe('escrow', () => {
   jest.setTimeout(20e3);
 
@@ -14,19 +17,19 @@ describe('escrow', () => {
   const sendTransaction = async actions => {
     actions = Array.isArray(actions) ? actions : [actions];
     return await eos.sendTransaction(
-      actions.map(({ name, data }) => {
-        console.log(`Issuing action: ${name}`);
+      actions.map(({ name, data, actor = account }) => {
+        console.log(`Issuing action: ${name} for ${actor} on ${account}`);
         return eos.createAction({
           name,
           account,
-          actor: account,
+          actor,
           data,
         });
       })
     );
   };
 
-  // deploy contract
+  // use "beforeAll" to speed up tests (preventing the need to tear down after each)
   beforeAll(async () => {
     await eos.createAccount({ account });
     await eos.deploy({
@@ -36,9 +39,82 @@ describe('escrow', () => {
     });
   });
 
+  // when user exists
+  describe('when a user1 is added with 100 tokens', () => {
+    beforeAll(async () => {
+      await sendTransaction({
+        name: 'addaccount',
+        data: {
+          user: 'user1',
+          total: `100 ${symbol}`,
+        },
+      });
+    });
+    afterAll(async () => {
+      await sendTransaction({
+        name: 'wipeall',
+        data: {
+          symbol_str: symbol,
+        },
+      });
+    });
+    describe('when the currency balance is fetched', () => {
+      let response;
+      beforeAll(async () => {
+        [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+      });
+      test('then getting their currency balance must show the correct amount', () => {
+        expect(response).to.equal(`100 ${symbol}`);
+      });
+    });
+    describe('when vest is called', () => {
+      let promise;
+      beforeAll(() => {
+        promise = sendTransaction({
+          name: 'vest',
+          data: {
+            symbol_str: symbol,
+          },
+        });
+      });
+      test('then it fails as there is no vesting period', done => {
+        promise
+          .then(() => done('Should have failed'))
+          .catch(err => {
+            expect(err.message).to.contain('Nothing is currently vestable');
+            done();
+          });
+      });
+    });
+  });
+
   describe('addperiod', () => {
     // error states
-    describe('when attempted by a user not the contract itself', () => {});
+    describe('when attempted by a user not the contract itself', () => {
+      let actor;
+      beforeAll(async () => {
+        actor = eos.generateAccountName();
+        await eos.createAccount({ account: actor });
+      });
+      test('then it fails due to not being the contract', done => {
+        sendTransaction({
+          name: 'addperiod',
+          actor,
+          data: {
+            symbol_str: symbol,
+            timestamp: new Date().getTime(),
+            numerator: 2,
+            denominator: 4,
+          },
+        })
+          .then(() => done('Should not have succeeded!'))
+          .catch(err => {
+            expect(err.message).to.contain(`missing authority of ${account}`);
+            done();
+          });
+      });
+    });
+
     describe('when an account already exists', () => {
       describe('and a period is added', () => {});
     });
@@ -46,54 +122,6 @@ describe('escrow', () => {
       describe('and another period is added with a different denomiator', () => {});
     });
 
-    // when user exists
-    describe('when a user1 is added with 100 tokens', () => {
-      beforeAll(async () => {
-        await sendTransaction({
-          name: 'addaccount',
-          data: {
-            user: 'user1',
-            total: `100 ${symbol}`,
-          },
-        });
-      });
-      afterAll(async () => {
-        await sendTransaction({
-          name: 'wipeall',
-          data: {
-            symbol_str: symbol,
-          },
-        });
-      });
-      describe('when the currency balance is fetched', () => {
-        let response;
-        beforeAll(async () => {
-          [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
-        });
-        test('then getting their currency balance must show the correct amount', () => {
-          expect(response).to.equal(`100 ${symbol}`);
-        });
-      });
-      describe('when vest is called', () => {
-        let promise;
-        beforeAll(() => {
-          promise = sendTransaction({
-            name: 'vest',
-            data: {
-              symbol_str: symbol,
-            },
-          });
-        });
-        test('then it fails as there is no vesting period', done => {
-          promise
-            .then(() => done('Should have failed'))
-            .catch(err => {
-              expect(err.message).to.contain('Nothing is currently vestable');
-              done();
-            });
-        });
-      });
-    });
     // when periods exist
     describe('when a period of 2/4 has been added for four weeks ago', () => {
       describe('and a period of 1/4 has been added for a week ago', () => {
@@ -101,6 +129,7 @@ describe('escrow', () => {
           describe('when a user1 is added with 100 tokens', () => {
             describe('when user2 is added with 10.51 tokens', () => {
               beforeAll(async () => {
+                // combine actions for faster tests
                 await sendTransaction([
                   {
                     name: 'addperiod',
