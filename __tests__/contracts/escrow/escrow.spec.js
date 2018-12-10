@@ -5,7 +5,7 @@ const path = require('path');
 const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
 
 // Using jest-circus test runner to ensure (before|after)All don't run in skipped
-// blocks
+// blocks https://github.com/facebook/jest/issues/6755 and https://github.com/facebook/jest/issues/6166
 
 describe('escrow', () => {
   jest.setTimeout(20e3);
@@ -40,12 +40,16 @@ describe('escrow', () => {
   });
 
   // when user exists
-  describe('when a user1 is added with 100 tokens', () => {
+  describe('when a user is added with 100 tokens', () => {
+    let username;
     beforeAll(async () => {
+      username = eos.generateAccountName();
+      await eos.createAccount({ account: username });
+
       await sendTransaction({
         name: 'addaccount',
         data: {
-          user: 'user1',
+          user: username,
           total: `100 ${symbol}`,
         },
       });
@@ -61,7 +65,7 @@ describe('escrow', () => {
     describe('when the currency balance is fetched', () => {
       let response;
       beforeAll(async () => {
-        [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+        [response] = await eos.api.rpc.get_currency_balance(account, username);
       });
       test('then getting their currency balance must show the correct amount', () => {
         expect(response).to.equal(`100 ${symbol}`);
@@ -89,35 +93,85 @@ describe('escrow', () => {
   });
 
   describe('addperiod', () => {
-    // error states
-    describe('when attempted by a user not the contract itself', () => {
+    describe('when a user exists', () => {
       let actor;
       beforeAll(async () => {
         actor = eos.generateAccountName();
         await eos.createAccount({ account: actor });
       });
-      test('then it fails due to not being the contract', done => {
-        sendTransaction({
-          name: 'addperiod',
-          actor,
-          data: {
-            symbol_str: symbol,
-            timestamp: new Date().getTime(),
-            numerator: 2,
-            denominator: 4,
-          },
-        })
-          .then(() => done('Should not have succeeded!'))
-          .catch(err => {
-            expect(err.message).to.contain(`missing authority of ${account}`);
-            done();
+      describe('and they attempt to addperiod', () => {
+        let promise;
+        beforeAll(() => {
+          promise = sendTransaction({
+            name: 'addperiod',
+            actor,
+            data: {
+              symbol_str: symbol,
+              timestamp: new Date().getTime(),
+              numerator: 2,
+              denominator: 4,
+            },
           });
+        });
+        test('then it fails due to not being the contract authority', done => {
+          promise
+            .then(() => done('Should not have succeeded!'))
+            .catch(err => {
+              // Note: due to an issue with jest-circus runner, if this fails,
+              // the done() won't get hit and we'll have to wait for the timeout
+              expect(err.message).to.contain(`missing authority of ${account}`);
+              done();
+            });
+        });
+      });
+      describe('and the user is added to escrow', () => {
+        beforeAll(async () => {
+          await sendTransaction({
+            name: 'addaccount',
+            data: {
+              user: 'user1',
+              total: `100 ${symbol}`,
+            },
+          });
+        });
+
+        afterAll(async () => {
+          await sendTransaction({
+            name: 'wipeall',
+            data: {
+              symbol_str: symbol,
+            },
+          });
+        });
+
+        describe('when a period is attempted to be added', () => {
+          let promise;
+          beforeAll(() => {
+            promise = sendTransaction({
+              name: 'addperiod',
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime(),
+                numerator: 2,
+                denominator: 4,
+              },
+            });
+          });
+
+          test('then it fails due to a user already existing', done => {
+            promise
+              .then(() => done('Should not have succeeded!'))
+              .catch(err => {
+                expect(err.message).to.contain(
+                  'Cannot add an escrow period after accounts have been added'
+                );
+                done();
+              });
+          });
+        });
       });
     });
 
-    describe('when an account already exists', () => {
-      describe('and a period is added', () => {});
-    });
     describe('when a period is set to 8/12', () => {
       describe('and another period is added with a different denomiator', () => {});
     });
@@ -129,6 +183,8 @@ describe('escrow', () => {
           describe('when a user1 is added with 100 tokens', () => {
             describe('when user2 is added with 10.51 tokens', () => {
               beforeAll(async () => {
+                await eos.createAccount({ account: 'user1' });
+                await eos.createAccount({ account: 'user2' });
                 // combine actions for faster tests
                 await sendTransaction([
                   {

@@ -107,6 +107,8 @@ void escrow::wipeall(string symbol_str) {
 void escrow::addaccount(name user, asset total) {
   require_auth(_self);
 
+  eosio_assert(is_account(user), "Requires a real account");
+
   accounts acc(_self, user.value);
 
   acc.emplace(_self, [&](auto &a) {
