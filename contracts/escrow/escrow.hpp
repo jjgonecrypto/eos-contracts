@@ -26,6 +26,11 @@ public:
   [[eosio::action]] void delaccount(name user, string symbol_str);
   [[eosio::action]] void wipeall(string symbol_str);
   [[eosio::action]] void vest(string symbol_str);
+  [[eosio::action]] void transfer(name from, name to, asset quantity,
+                                  string memo);
+
+  // The contract of the token that this
+  static constexpr name token_contract = name("eosio.token");
 
 private:
   /**
@@ -90,6 +95,19 @@ private:
     // the period is cumulative - the sum of all previous vesting periods
     last_entry.numerator = numerators;
     return last_entry;
+  }
+
+  void internal_add_account(name user, asset total) {
+    accounts acc(_self, user.value);
+
+    acc.emplace(_self, [&](auto &a) {
+      a.remaining = total;
+      a.total_escrowed = total;
+    });
+
+    // now track the account name in another table for future use
+    holders hldrs(_self, total.symbol.code().raw());
+    hldrs.emplace(_self, [&](auto &h) { h.account = user; });
   }
 };
 

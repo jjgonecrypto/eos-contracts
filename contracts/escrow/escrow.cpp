@@ -85,6 +85,18 @@ void escrow::delaccount(name user, string symbol_str) {
   hldrs.erase(huser);
 }
 
+void escrow::transfer(name from, name to, asset quantity, string memo) {
+  eosio_assert(from == token_contract,
+               "Transfers only allowed from associated token contract");
+  eosio_assert(to == _self, "Transfers only allowed to this contract");
+
+  name recipient = name(memo);
+  eosio_assert(is_account(recipient), "Recipient must be a valid account");
+
+  require_recipient(recipient);
+
+  internal_add_account(recipient, quantity);
+}
 /**
  * Completely remove all accounts from the contract state
  */
@@ -109,16 +121,7 @@ void escrow::addaccount(name user, asset total) {
 
   eosio_assert(is_account(user), "Requires a real account");
 
-  accounts acc(_self, user.value);
-
-  acc.emplace(_self, [&](auto &a) {
-    a.remaining = total;
-    a.total_escrowed = total;
-  });
-
-  // now track the account name in another table for future use
-  holders hldrs(_self, total.symbol.code().raw());
-  hldrs.emplace(_self, [&](auto &h) { h.account = user; });
+  internal_add_account(user, total);
 }
 
 /**
@@ -149,38 +152,39 @@ void escrow::vest(string symbol_str) {
       quantity =
           (account->total_escrowed * period.numerator / period.denominator) -
           (account->total_escrowed - account->remaining);
-      acc.modify(account, _self,
-                 [&](auto &a) { a.remaining = a.remaining - quantity; });
     }
     if (quantity.amount > 0) {
-      // TODO issue a token transfer to the user
-      // sythentix transfer [from: _self, to: user.value, quantity, memo: ""]
+      // issue a token transfer to the user
+      // TODO add eosio.code perms feature
+      // action(permission_level{_self, name("active")}, token_contract,
+      //        name("transfer"), std::make_tuple(_self, user, quantity,
+      //        "Vested"))
+      //     .send();
+
+      // Now deduct from their account
+      acc.modify(account, _self,
+                 [&](auto &a) { a.remaining = a.remaining - quantity; });
     }
   }
 }
 
-} // namespace eosio
-EOSIO_DISPATCH(eosio::escrow,
-               (addperiod)(delperiods)(addaccount)(vest)(wipeall));
-
-/*
-extern "C" { \
-   void apply( uint64_t receiver, uint64_t code, uint64_t action ) { \
-      auto self = receiver; \
-      if( action == N(onerror)) { \
-         // onerror is only valid if it is for the "eosio" code account and
-authorized by "eosio"'s "active permission
-         eosio_assert(code == N(eosio), "onerror action's are only valid from
-the \"eosio\" system account"); \
-      } \
-      if( ((code == self && action != N(transfer)) || (code == N(eosio.token) &&
-action == N(transfer)) || action == N(onerror)) ) { \
-         TYPE thiscontract( self ); \
-         switch( action ) { \
-            EOSIO_API( TYPE, MEMBERS ) \
-         } \
-         // does not allow destructor of thiscontract to run: eosio_exit(0);
-      } \
-   } \
+extern "C" {
+void apply(uint64_t receiver, uint64_t code, uint64_t action) {
+  if (code == receiver) {
+    switch (action) {
+      EOSIO_DISPATCH_HELPER(eosio::escrow,
+                            (addperiod)(delperiods)(addaccount)(vest)(wipeall))
+    }
+  } else if (code == (eosio::escrow::token_contract).value &&
+             action == name("transfer").value) {
+    execute_action(name(receiver), name(code), &escrow::transfer);
+  } else if (action == name("onerror").value) {
+    eosio_assert(
+        code == name("eosio").value,
+        "onerror action's are only valid from the \"eosio\" system account");
+  }
 }
-*/
+}
+} // namespace eosio
+// EOSIO_DISPATCH(eosio::escrow,
+//                (addperiod)(delperiods)(addaccount)(vest)(wipeall));

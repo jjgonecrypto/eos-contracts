@@ -325,7 +325,7 @@ describe('escrow', () => {
                     beforeAll(async () => {
                       [response] = await eos.api.rpc.get_currency_balance(account, user1);
                     });
-                    test('then getting their currency balance must be unchanged', () => {
+                    test('then their balance must be unchanged', () => {
                       expect(response).to.equal(`25 ${symbol}`);
                     });
                   });
