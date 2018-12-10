@@ -129,7 +129,7 @@ describe('escrow', () => {
           await sendTransaction({
             name: 'addaccount',
             data: {
-              user: 'user1',
+              user: actor,
               total: `100 ${symbol}`,
             },
           });
@@ -173,18 +173,56 @@ describe('escrow', () => {
     });
 
     describe('when a period is set to 8/12', () => {
-      describe('and another period is added with a different denomiator', () => {});
+      describe('and another period is added with a different denomiator', () => {
+        let promise;
+        beforeAll(() => {
+          promise = sendTransaction([
+            {
+              name: 'addperiod',
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+                numerator: 2,
+                denominator: 3,
+              },
+            },
+            {
+              name: 'addperiod',
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime() - 1000 * 3600 * 24 * 7,
+                numerator: 1,
+                denominator: 4,
+              },
+            },
+          ]);
+        });
+        test('then it fails with different denominator error', done => {
+          promise
+            .then(() => done('Should not have succeeded!'))
+            .catch(err => {
+              expect(err.message).to.contain(
+                'Cannot add a new escrow as supplied denominator does not match denominator'
+              );
+              done();
+            });
+        });
+      });
     });
 
     // when periods exist
     describe('when a period of 2/4 has been added for four weeks ago', () => {
       describe('and a period of 1/4 has been added for a week ago', () => {
         describe('and a period of 1/4 has been added for a week in the future', () => {
-          describe('when a user1 is added with 100 tokens', () => {
-            describe('when user2 is added with 10.51 tokens', () => {
+          describe('when a user is added with 100 tokens', () => {
+            describe('when another user is added with 10.51 tokens', () => {
+              let user1;
+              let user2;
               beforeAll(async () => {
-                await eos.createAccount({ account: 'user1' });
-                await eos.createAccount({ account: 'user2' });
+                user1 = eos.generateAccountName();
+                user2 = eos.generateAccountName();
+                await eos.createAccount({ account: user1 });
+                await eos.createAccount({ account: user2 });
                 // combine actions for faster tests
                 await sendTransaction([
                   {
@@ -217,14 +255,14 @@ describe('escrow', () => {
                   {
                     name: 'addaccount',
                     data: {
-                      user: 'user1',
+                      user: user1,
                       total: `100 ${symbol}`,
                     },
                   },
                   {
                     name: 'addaccount',
                     data: {
-                      user: 'user2',
+                      user: user2,
                       total: `10.51 ${symbol}`,
                     },
                   },
@@ -258,7 +296,7 @@ describe('escrow', () => {
                 describe('when the currency balance is fetched for user1', () => {
                   let response;
                   beforeAll(async () => {
-                    [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+                    [response] = await eos.api.rpc.get_currency_balance(account, user1);
                   });
                   test('then their balance must show the correct amount of 1/4 remaining', () => {
                     expect(response).to.equal(`25 ${symbol}`);
@@ -267,7 +305,7 @@ describe('escrow', () => {
                 describe('when the currency balance is fetched for user2', () => {
                   let response;
                   beforeAll(async () => {
-                    [response] = await eos.api.rpc.get_currency_balance(account, 'user2');
+                    [response] = await eos.api.rpc.get_currency_balance(account, user2);
                   });
                   test('then their balance must show the correct amount of 1/4 remaining', () => {
                     expect(response).to.equal(`2.63 ${symbol}`);
@@ -285,7 +323,7 @@ describe('escrow', () => {
                   describe('when the currency balance is fetched again for user1', () => {
                     let response;
                     beforeAll(async () => {
-                      [response] = await eos.api.rpc.get_currency_balance(account, 'user1');
+                      [response] = await eos.api.rpc.get_currency_balance(account, user1);
                     });
                     test('then getting their currency balance must be unchanged', () => {
                       expect(response).to.equal(`25 ${symbol}`);
@@ -294,7 +332,7 @@ describe('escrow', () => {
                   describe('when the currency balance is fetched again for user2', () => {
                     let response;
                     beforeAll(async () => {
-                      [response] = await eos.api.rpc.get_currency_balance(account, 'user2');
+                      [response] = await eos.api.rpc.get_currency_balance(account, user2);
                     });
                     test('then their balance must be unchanged', () => {
                       expect(response).to.equal(`2.63 ${symbol}`);
