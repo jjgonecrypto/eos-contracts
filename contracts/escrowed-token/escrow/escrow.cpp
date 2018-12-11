@@ -18,11 +18,6 @@ void escrow::addperiod(string symbol_str, uint64_t timestamp,
 
   symbol sym(symbol_str, 0);
 
-  // Prevent periods being added after accounts already added into the contract
-  holders hldrs(_self, sym.code().raw());
-  eosio_assert(hldrs.begin() == hldrs.end(),
-               "Cannot add an escrow period after accounts have been added.");
-
   periods prds(_self, sym.code().raw());
 
   // ensure denominator is consistent (so we can do integer arthimetic with the
@@ -80,11 +75,6 @@ void escrow::delaccount(name user, string symbol_str) {
       "Cannot remove a user who still has a remaining balance for this symbol");
 
   acc.erase(a);
-
-  // now remove the account name from the tracker
-  holders hldrs(_self, sym.code().raw());
-  auto huser = hldrs.find(user.value);
-  hldrs.erase(huser);
 }
 
 /**
@@ -114,10 +104,6 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
   } else {
     // TODO - add to entry if it already exists (and confirm symbol matches)
   }
-
-  // now track the account name in another table for future use
-  holders hldrs(_self, quantity.symbol.code().raw());
-  hldrs.emplace(_self, [&](auto &h) { h.account = recipient; });
 }
 
 /**

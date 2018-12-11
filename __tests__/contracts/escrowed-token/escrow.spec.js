@@ -17,7 +17,7 @@ const generateSymbol = () =>
 // Using jest-circus test runner to ensure (before|after)All don't run in skipped
 // blocks https://github.com/facebook/jest/issues/6755 and https://github.com/facebook/jest/issues/6166
 describe('escrow', () => {
-  jest.setTimeout(15e3);
+  jest.setTimeout(10e3);
 
   const escrow = {
     account: eos.generateAccountName(),
@@ -66,7 +66,7 @@ describe('escrow', () => {
       contract: escrow.contract,
       contractDir: path.join(__dirname, '..', '..', '..', 'contracts', 'escrowed-token', 'escrow'),
     });
-  });
+  }, 30e3);
 
   // when user exists
   describe('when a user is issued 100 tokens', () => {
@@ -185,56 +185,6 @@ describe('escrow', () => {
               expect(err.message).to.contain(`missing authority of ${escrow.account}`);
               done();
             });
-        });
-      });
-      describe('and the user is added to escrow', () => {
-        beforeAll(async () => {
-          await sendTransaction([
-            {
-              name: 'create',
-              account: token.account,
-              data: {
-                issuer: token.account,
-                maximum_supply: `100 ${symbol}`,
-              },
-            },
-            {
-              name: 'issue',
-              account: token.account,
-              data: {
-                to: escrow.account,
-                quantity: `10 ${symbol}`,
-                memo: actor,
-              },
-            },
-          ]);
-        });
-
-        describe('when a period is attempted to be added', () => {
-          let promise;
-          beforeAll(() => {
-            promise = sendTransaction({
-              name: 'addperiod',
-              account: escrow.account,
-              data: {
-                symbol_str: symbol,
-                timestamp: new Date().getTime(),
-                numerator: 2,
-                denominator: 4,
-              },
-            });
-          });
-
-          test('then it fails due to a user already existing', done => {
-            promise
-              .then(() => done('Should not have succeeded!'))
-              .catch(err => {
-                expect(err.message).to.contain(
-                  'Cannot add an escrow period after accounts have been added'
-                );
-                done();
-              });
-          });
         });
       });
     });

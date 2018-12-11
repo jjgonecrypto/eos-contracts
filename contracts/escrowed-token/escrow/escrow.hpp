@@ -15,7 +15,7 @@ time_point current_time_point() {
   return ct;
 }
 
-class [[eosio::contract("escrow")]] escrow : public contract {
+class[[eosio::contract("escrow")]] escrow : public contract {
 public:
   using contract::contract;
 
@@ -58,18 +58,6 @@ private:
     uint64_t primary_key() const { return remaining.symbol.code().raw(); }
   };
   typedef multi_index<name("accounts"), account> accounts;
-
-  /**
-   * The list of all account holders.
-   * Required so we can do actions for all users (as we can't iterate through
-   * all scopes directly. See https://github.com/EOSIO/eos/issues/5380)
-   *
-   */
-  struct [[eosio::table]] account_holders {
-    name account;
-    uint64_t primary_key() const { return account.value; }
-  };
-  typedef multi_index<name("holders"), account_holders> holders;
 
   ///////
   // Internal functions
