@@ -3,7 +3,14 @@
 const expect = require('chai').expect;
 const path = require('path');
 const eos = require('eosjs-node').connect({ url: 'http://127.0.0.1:7777' });
+const randomstring = require('randomstring');
 
+const generateSymbol = () =>
+  randomstring.generate({
+    length: 7,
+    charset: 'alphabetic',
+    capitalization: 'uppercase',
+  });
 // Using jest-circus test runner to ensure (before|after)All don't run in skipped
 // blocks https://github.com/facebook/jest/issues/6755 and https://github.com/facebook/jest/issues/6166
 
@@ -12,7 +19,6 @@ describe('escrow', () => {
 
   const account = eos.generateAccountName();
   const contract = 'escrow';
-  const symbol = 'JAYS';
 
   const sendTransaction = async actions => {
     actions = Array.isArray(actions) ? actions : [actions];
@@ -42,8 +48,10 @@ describe('escrow', () => {
   // when user exists
   describe('when a user is added with 100 tokens', () => {
     let username;
+    let symbol;
     beforeAll(async () => {
       username = eos.generateAccountName();
+      symbol = generateSymbol();
       await eos.createAccount({ account: username });
 
       await sendTransaction({
@@ -51,14 +59,6 @@ describe('escrow', () => {
         data: {
           user: username,
           total: `100 ${symbol}`,
-        },
-      });
-    });
-    afterAll(async () => {
-      await sendTransaction({
-        name: 'wipeall',
-        data: {
-          symbol_str: symbol,
         },
       });
     });
@@ -94,8 +94,10 @@ describe('escrow', () => {
 
   describe('addperiod', () => {
     describe('when a user exists', () => {
+      let symbol;
       let actor;
       beforeAll(async () => {
+        symbol = generateSymbol();
         actor = eos.generateAccountName();
         await eos.createAccount({ account: actor });
       });
@@ -135,15 +137,6 @@ describe('escrow', () => {
           });
         });
 
-        afterAll(async () => {
-          await sendTransaction({
-            name: 'wipeall',
-            data: {
-              symbol_str: symbol,
-            },
-          });
-        });
-
         describe('when a period is attempted to be added', () => {
           let promise;
           beforeAll(() => {
@@ -174,8 +167,11 @@ describe('escrow', () => {
 
     describe('when a period is set to 8/12', () => {
       describe('and another period is added with a different denomiator', () => {
+        let symbol;
         let promise;
         beforeAll(() => {
+          symbol = generateSymbol();
+
           promise = sendTransaction([
             {
               name: 'addperiod',
@@ -216,9 +212,12 @@ describe('escrow', () => {
         describe('and a period of 1/4 has been added for a week in the future', () => {
           describe('when a user is added with 100 tokens', () => {
             describe('when another user is added with 10.51 tokens', () => {
+              let symbol;
               let user1;
               let user2;
               beforeAll(async () => {
+                symbol = generateSymbol();
+
                 user1 = eos.generateAccountName();
                 user2 = eos.generateAccountName();
                 await eos.createAccount({ account: user1 });
@@ -267,22 +266,6 @@ describe('escrow', () => {
                     },
                   },
                 ]);
-              });
-              afterAll(async () => {
-                await sendTransaction(
-                  {
-                    name: 'delperiods',
-                    data: {
-                      symbol_str: symbol,
-                    },
-                  },
-                  {
-                    name: 'wipeall',
-                    data: {
-                      symbol_str: symbol,
-                    },
-                  }
-                );
               });
               describe('when vest is called', () => {
                 beforeAll(async () => {

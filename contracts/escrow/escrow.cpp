@@ -97,22 +97,7 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
 
   internal_add_account(recipient, quantity);
 }
-/**
- * Completely remove all accounts from the contract state
- */
-void escrow::wipeall(string symbol_str) {
-  require_auth(_self);
 
-  symbol sym(symbol_str, 0);
-
-  // now remove the account name from the tracker
-  holders hldrs(_self, sym.code().raw());
-  for (auto itr = hldrs.begin(); itr != hldrs.end();) {
-    accounts acc(_self, itr->account.value);
-    acc.erase(acc.find(sym.code().raw()));
-    itr = hldrs.erase(itr);
-  }
-}
 /**
  * Adds an escrow account entry
  */
@@ -173,7 +158,7 @@ void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   if (code == receiver) {
     switch (action) {
       EOSIO_DISPATCH_HELPER(eosio::escrow,
-                            (addperiod)(delperiods)(addaccount)(vest)(wipeall))
+                            (addperiod)(delperiods)(addaccount)(vest))
     }
   } else if (code == (eosio::escrow::token_contract).value &&
              action == name("transfer").value) {
