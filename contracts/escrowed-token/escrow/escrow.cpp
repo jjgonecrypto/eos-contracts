@@ -104,7 +104,7 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
 
   accounts acc(_self, recipient.value);
 
-  // TODO - add to entry if it already exists
+  // TODO - add to entry if it already exists (and confirm symbol matches)
 
   acc.emplace(_self, [&](auto &a) {
     a.remaining = quantity;
@@ -166,7 +166,8 @@ extern "C" {
 void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   if (code == receiver) {
     switch (action) {
-      EOSIO_DISPATCH_HELPER(eosio::escrow, (addperiod)(delperiods)(vest))
+      EOSIO_DISPATCH_HELPER(eosio::escrow,
+                            (addperiod)(delperiods)(delaccount)(vest))
     }
   } else if (code == (eosio::escrow::token_contract).value &&
              action == name("transfer").value) {

@@ -126,6 +126,30 @@ describe('escrow', () => {
           });
       });
     });
+    describe('when attempting to delete the escrow entry', () => {
+      let promise;
+      beforeAll(() => {
+        promise = sendTransaction({
+          name: 'delaccount',
+          account: escrow.account,
+          data: {
+            user: username,
+            symbol_str: symbol,
+          },
+        });
+      });
+      test('then it fails as the balance is greater than 100', done => {
+        promise
+          .then(() => done('Should have failed'))
+          .catch(err => {
+            console.log(err);
+            expect(err.message).to.contain(
+              'Cannot remove a user account who still has a remaining balance'
+            );
+            done();
+          });
+      });
+    });
   });
 
   describe('addperiod', () => {
