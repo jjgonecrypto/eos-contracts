@@ -84,10 +84,13 @@ void escrow::delaccount(name user, string symbol_str) {
  * Receive incoming tokens on behalf of a user
  */
 void escrow::transfer(name from, name to, asset quantity, string memo) {
-  eosio_assert(from == token_contract,
-               "Transfers only allowed from associated token contract");
-  eosio_assert(to == _self, "Transfers only allowed to this contract");
-
+  // do not execute for transfers other than the ones we require
+  // NOTE: we don't assert because when we transfer back out durig vest, this
+  // method is called again, and while it isn't relevant, we don't want to fail
+  // that transfer.
+  if (from != token_contract || to != _self) {
+    return;
+  }
   eosio_assert(quantity.symbol.is_valid(), "Supplied symbol must be valid");
   eosio_assert(quantity.amount > 0,
                "Amount to transfer must be greater than 0");
@@ -148,11 +151,11 @@ void escrow::vest(string symbol_str, name user) {
   }
   if (quantity.amount > 0) {
     // issue a token transfer to the user
-    // TODO add eosio.code perms feature
-    // action(permission_level{_self, name("active")}, token_contract,
-    //        name("transfer"), std::make_tuple(_self, user, quantity,
-    //        "Vested"))
-    //     .send();
+    action(permission_level{_self, name("active")}, token_contract,
+           name("transfer"),
+           std::make_tuple(_self, user, quantity,
+                           "Vested from " + _self.to_string()))
+        .send();
 
     // Now deduct from their account
     acc.modify(account, _self,

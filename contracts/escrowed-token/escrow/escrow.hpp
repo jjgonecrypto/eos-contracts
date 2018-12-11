@@ -15,7 +15,7 @@ time_point current_time_point() {
   return ct;
 }
 
-class[[eosio::contract("escrow")]] escrow : public contract {
+class [[eosio::contract("escrow")]] escrow : public contract {
 public:
   using contract::contract;
 

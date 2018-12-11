@@ -66,6 +66,25 @@ describe('escrow', () => {
       contract: escrow.contract,
       contractDir: path.join(__dirname, '..', '..', '..', 'contracts', 'escrowed-token', 'escrow'),
     });
+    // ensure escrow can issue actions (transfer back to token contract)
+    await sendTransaction({
+      account: 'eosio',
+      name: 'updateauth',
+      actor: escrow.account,
+      data: {
+        account: escrow.account,
+        permission: 'active',
+        parent: 'owner',
+        auth: {
+          threshold: 1,
+          keys: [{ key: eos.api.signatureProvider.availableKeys[0], weight: 1 }],
+          accounts: [
+            { permission: { actor: escrow.account, permission: 'eosio.code' }, weight: 1 },
+          ],
+          waits: [],
+        },
+      },
+    });
   }, 30e3);
 
   describe('when a user is transferred 100 tokens', () => {
@@ -437,6 +456,7 @@ describe('escrow', () => {
         symbol = generateSymbol();
 
         user = eos.generateAccountName();
+        console.log('creating user: ', user);
         await eos.createAccount({ account: user });
         // combine actions for faster tests
         await sendTransaction([
@@ -484,7 +504,7 @@ describe('escrow', () => {
           ]);
         });
 
-        describe('when the currency balance is fetched for the user', () => {
+        describe('when the currency balance in escrow is fetched for the user', () => {
           let response;
           beforeAll(async () => {
             [response] = await eos.api.rpc.get_currency_balance(escrow.account, user);
@@ -492,7 +512,15 @@ describe('escrow', () => {
           test('then their balance must be show the vested parts', () => {
             expect(response).to.equal(`66.67 ${symbol}`);
           });
-          test('and their balance in the token account should show this transferred amount', () => {});
+        });
+        describe('when the currency balance in tokens fetched for the user', () => {
+          let response;
+          beforeAll(async () => {
+            [response] = await eos.api.rpc.get_currency_balance(token.account, user);
+          });
+          test('then their balance must be show the vested parts', () => {
+            expect(response).to.equal(`33.33 ${symbol}`);
+          });
         });
 
         describe('when the user is issued another 100 tokens', () => {
@@ -518,6 +546,15 @@ describe('escrow', () => {
               expect(response).to.equal(`166.67 ${symbol}`);
             });
           });
+          describe('when the currency balance in tokens fetched for the user', () => {
+            let response;
+            beforeAll(async () => {
+              [response] = await eos.api.rpc.get_currency_balance(token.account, user);
+            });
+            test('then their balance must be show the original vested parts', () => {
+              expect(response).to.equal(`33.33 ${symbol}`);
+            });
+          });
           describe('when vest is called again for the user', () => {
             beforeAll(async () => {
               await sendTransaction([
@@ -540,8 +577,15 @@ describe('escrow', () => {
               test('then their balance must show the newly vested parts', () => {
                 expect(response).to.equal(`133.34 ${symbol}`);
               });
-
-              test('and their balance in the token account should show this transferred amount', () => {});
+            });
+            describe('when the currency balance in tokens fetched for the user', () => {
+              let response;
+              beforeAll(async () => {
+                [response] = await eos.api.rpc.get_currency_balance(token.account, user);
+              });
+              test('then their balance must be show this new amount', () => {
+                expect(response).to.equal(`66.66 ${symbol}`);
+              });
             });
           });
         });
