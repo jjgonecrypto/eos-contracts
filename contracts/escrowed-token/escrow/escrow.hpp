@@ -22,7 +22,6 @@ public:
   [[eosio::action]] void addperiod(string symbol_str, uint64_t timestamp,
                                    uint64_t numerator, uint64_t denominator);
   [[eosio::action]] void delperiods(string symbol_str);
-  [[eosio::action]] void addaccount(name user, asset total);
   [[eosio::action]] void delaccount(name user, string symbol_str);
   [[eosio::action]] void vest(string symbol_str);
   [[eosio::action]] void transfer(name from, name to, asset quantity,
@@ -94,19 +93,6 @@ private:
     // the period is cumulative - the sum of all previous vesting periods
     last_entry.numerator = numerators;
     return last_entry;
-  }
-
-  void internal_add_account(name user, asset total) {
-    accounts acc(_self, user.value);
-
-    acc.emplace(_self, [&](auto &a) {
-      a.remaining = total;
-      a.total_escrowed = total;
-    });
-
-    // now track the account name in another table for future use
-    holders hldrs(_self, total.symbol.code().raw());
-    hldrs.emplace(_self, [&](auto &h) { h.account = user; });
   }
 };
 

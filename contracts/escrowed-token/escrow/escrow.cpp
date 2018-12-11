@@ -69,6 +69,8 @@ void escrow::delaccount(name user, string symbol_str) {
 
   symbol sym(symbol_str, 0);
 
+  eosio_assert(sym.is_valid(), "Supplied symbol must be valid");
+
   accounts acc(_self, user.value);
 
   auto a = acc.find(sym.code().raw());
@@ -85,28 +87,33 @@ void escrow::delaccount(name user, string symbol_str) {
   hldrs.erase(huser);
 }
 
+/**
+ * Receive incoming tokens on behalf of a user
+ */
 void escrow::transfer(name from, name to, asset quantity, string memo) {
   eosio_assert(from == token_contract,
                "Transfers only allowed from associated token contract");
   eosio_assert(to == _self, "Transfers only allowed to this contract");
-
+  eosio_assert(quantity.symbol.is_valid(), "Supplied symbol must be valid");
+  eosio_assert(quantity.amount > 0,
+               "Amount to transfer must be greater than 0");
   name recipient = name(memo);
   eosio_assert(is_account(recipient), "Recipient must be a valid account");
 
   require_recipient(recipient);
 
-  internal_add_account(recipient, quantity);
-}
+  accounts acc(_self, recipient.value);
 
-/**
- * Adds an escrow account entry
- */
-void escrow::addaccount(name user, asset total) {
-  require_auth(_self);
+  // TODO - add to entry if it already exists
 
-  eosio_assert(is_account(user), "Requires a real account");
+  acc.emplace(_self, [&](auto &a) {
+    a.remaining = quantity;
+    a.total_escrowed = quantity;
+  });
 
-  internal_add_account(user, total);
+  // now track the account name in another table for future use
+  holders hldrs(_self, quantity.symbol.code().raw());
+  hldrs.emplace(_self, [&](auto &h) { h.account = recipient; });
 }
 
 /**
@@ -116,6 +123,8 @@ void escrow::vest(string symbol_str) {
   require_auth(_self);
 
   symbol sym(symbol_str, 0);
+
+  eosio_assert(sym.is_valid(), "Supplied symbol must be valid");
 
   auto period = get_current_period(sym);
 
@@ -157,8 +166,7 @@ extern "C" {
 void apply(uint64_t receiver, uint64_t code, uint64_t action) {
   if (code == receiver) {
     switch (action) {
-      EOSIO_DISPATCH_HELPER(eosio::escrow,
-                            (addperiod)(delperiods)(addaccount)(vest))
+      EOSIO_DISPATCH_HELPER(eosio::escrow, (addperiod)(delperiods)(vest))
     }
   } else if (code == (eosio::escrow::token_contract).value &&
              action == name("transfer").value) {
@@ -171,5 +179,3 @@ void apply(uint64_t receiver, uint64_t code, uint64_t action) {
 }
 }
 } // namespace eosio
-// EOSIO_DISPATCH(eosio::escrow,
-//                (addperiod)(delperiods)(addaccount)(vest)(wipeall));

@@ -21,7 +21,7 @@
   },
   "scripts": {
     "compile": "./scripts/compile-contracts-locally.sh",
-    "compile:docker": "./node_modules/eosio-ci/scripts/compile-contract.sh -c escrow -s $(pwd)/contracts/escrow -o $(pwd)/contracts/escrow",
+    "compile:docker": "./node_modules/eosio-ci/scripts/compile-contract.sh -c escrow -s $(pwd)/contracts/escrowed-token/escrow -o $(pwd)/contracts/escrowed-token/escrow && ./node_modules/eosio-ci/scripts/compile-contract.sh -c eosio.token -s $(pwd)/contracts/escrowed-token/eosio.token -o $(pwd)/contracts/escrowed-token/eosio.token",
     "eos:docker:start": "./node_modules/eosio-ci/scripts/start-eos.sh",
     "eos:docker:stop": "./node_modules/eosio-ci/scripts/stop-eos.sh",
     "format": "prettier --write \"*.js\"",
