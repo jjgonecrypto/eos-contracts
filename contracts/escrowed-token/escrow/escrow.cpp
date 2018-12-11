@@ -16,6 +16,9 @@ void escrow::addperiod(string symbol_str, uint64_t timestamp,
                        uint64_t numerator, uint64_t denominator) {
   require_auth(_self);
 
+  eosio_assert(numerator > 0, "Numerator must be greater than 0");
+  eosio_assert(denominator > 0, "Denominator must be greater than 0");
+
   symbol sym(symbol_str, 0);
 
   periods prds(_self, sym.code().raw());
@@ -84,9 +87,15 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
   eosio_assert(from == token_contract,
                "Transfers only allowed from associated token contract");
   eosio_assert(to == _self, "Transfers only allowed to this contract");
+
   eosio_assert(quantity.symbol.is_valid(), "Supplied symbol must be valid");
   eosio_assert(quantity.amount > 0,
                "Amount to transfer must be greater than 0");
+
+  periods prds(_self, quantity.symbol.code().raw());
+  eosio_assert(prds.begin() != prds.end(),
+               "Some periods must exist in order to accept incoming transfers");
+
   name recipient = name(memo);
   eosio_assert(is_account(recipient), "Recipient must be a valid account");
 
@@ -96,13 +105,18 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
 
   auto account = acc.find(quantity.symbol.code().raw());
 
-  if (account == acc.begin()) {
+  if (account == acc.end()) {
     acc.emplace(_self, [&](auto &a) {
       a.remaining = quantity;
       a.total_escrowed = quantity;
     });
   } else {
-    // TODO - add to entry if it already exists (and confirm symbol matches)
+    eosio_assert(quantity.symbol == account->total_escrowed.symbol,
+                 "Symbol precision must match existing entry");
+    acc.modify(account, _self, [&](auto &a) {
+      a.remaining = a.remaining + quantity;
+      a.total_escrowed = a.total_escrowed + quantity;
+    });
   }
 }
 
@@ -118,9 +132,6 @@ void escrow::vest(string symbol_str, name user) {
 
   auto period = get_current_period(sym);
 
-  // print("Found cumulative fraction of ", period.numerator, "/",
-  // period.denominator);
-
   eosio_assert(period.fraction() > 0, "Nothing is currently vestable.");
 
   eosio_assert(period.fraction() <= 1.0,
@@ -128,6 +139,7 @@ void escrow::vest(string symbol_str, name user) {
 
   accounts acc(_self, user.value);
   auto account = acc.find(sym.code().raw());
+
   asset quantity = asset(0, sym);
   if (account != acc.end()) {
     quantity =
