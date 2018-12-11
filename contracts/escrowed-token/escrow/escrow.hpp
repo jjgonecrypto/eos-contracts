@@ -15,7 +15,7 @@ time_point current_time_point() {
   return ct;
 }
 
-class[[eosio::contract("escrow")]] escrow : public contract {
+class [[eosio::contract("escrow")]] escrow : public contract {
 public:
   using contract::contract;
 
@@ -23,7 +23,7 @@ public:
                                    uint64_t numerator, uint64_t denominator);
   [[eosio::action]] void delperiods(string symbol_str);
   [[eosio::action]] void delaccount(name user, string symbol_str);
-  [[eosio::action]] void vest(string symbol_str);
+  [[eosio::action]] void vest(string symbol_str, name user);
   [[eosio::action]] void transfer(name from, name to, asset quantity,
                                   string memo);
 

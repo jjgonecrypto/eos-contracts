@@ -77,7 +77,7 @@ void escrow::delaccount(name user, string symbol_str) {
 
   eosio_assert(
       a->remaining.amount == 0,
-      "Cannot remove a user account who still has a remaining balance");
+      "Cannot remove a user who still has a remaining balance for this symbol");
 
   acc.erase(a);
 
@@ -104,12 +104,16 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
 
   accounts acc(_self, recipient.value);
 
-  // TODO - add to entry if it already exists (and confirm symbol matches)
+  auto account = acc.find(quantity.symbol.code().raw());
 
-  acc.emplace(_self, [&](auto &a) {
-    a.remaining = quantity;
-    a.total_escrowed = quantity;
-  });
+  if (account == acc.begin()) {
+    acc.emplace(_self, [&](auto &a) {
+      a.remaining = quantity;
+      a.total_escrowed = quantity;
+    });
+  } else {
+    // TODO - add to entry if it already exists (and confirm symbol matches)
+  }
 
   // now track the account name in another table for future use
   holders hldrs(_self, quantity.symbol.code().raw());
@@ -117,9 +121,9 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
 }
 
 /**
- * Vests any available tokens for all accounts
+ * Vests any available tokens for the account
  */
-void escrow::vest(string symbol_str) {
+void escrow::vest(string symbol_str, name user) {
   require_auth(_self);
 
   symbol sym(symbol_str, 0);
@@ -128,37 +132,33 @@ void escrow::vest(string symbol_str) {
 
   auto period = get_current_period(sym);
 
-  print("Found cumulative fraction of ", period.numerator, "/",
-        period.denominator);
+  // print("Found cumulative fraction of ", period.numerator, "/",
+  // period.denominator);
 
   eosio_assert(period.fraction() > 0, "Nothing is currently vestable.");
 
   eosio_assert(period.fraction() <= 1.0,
                "Vesting fraction must be less than 1.");
 
-  holders hldrs(_self, sym.code().raw());
-  for (auto itr = hldrs.begin(); itr != hldrs.end(); itr++) {
-    auto user = itr->account;
-    accounts acc(_self, user.value);
-    auto account = acc.find(sym.code().raw());
-    asset quantity = asset(0, sym);
-    if (account != acc.end()) {
-      quantity =
-          (account->total_escrowed * period.numerator / period.denominator) -
-          (account->total_escrowed - account->remaining);
-    }
-    if (quantity.amount > 0) {
-      // issue a token transfer to the user
-      // TODO add eosio.code perms feature
-      // action(permission_level{_self, name("active")}, token_contract,
-      //        name("transfer"), std::make_tuple(_self, user, quantity,
-      //        "Vested"))
-      //     .send();
+  accounts acc(_self, user.value);
+  auto account = acc.find(sym.code().raw());
+  asset quantity = asset(0, sym);
+  if (account != acc.end()) {
+    quantity =
+        (account->total_escrowed * period.numerator / period.denominator) -
+        (account->total_escrowed - account->remaining);
+  }
+  if (quantity.amount > 0) {
+    // issue a token transfer to the user
+    // TODO add eosio.code perms feature
+    // action(permission_level{_self, name("active")}, token_contract,
+    //        name("transfer"), std::make_tuple(_self, user, quantity,
+    //        "Vested"))
+    //     .send();
 
-      // Now deduct from their account
-      acc.modify(account, _self,
-                 [&](auto &a) { a.remaining = a.remaining - quantity; });
-    }
+    // Now deduct from their account
+    acc.modify(account, _self,
+               [&](auto &a) { a.remaining = a.remaining - quantity; });
   }
 }
 

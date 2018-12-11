@@ -17,7 +17,7 @@ const generateSymbol = () =>
 // Using jest-circus test runner to ensure (before|after)All don't run in skipped
 // blocks https://github.com/facebook/jest/issues/6755 and https://github.com/facebook/jest/issues/6166
 describe('escrow', () => {
-  jest.setTimeout(20e3);
+  jest.setTimeout(15e3);
 
   const escrow = {
     account: eos.generateAccountName(),
@@ -114,6 +114,7 @@ describe('escrow', () => {
           account: escrow.account,
           data: {
             symbol_str: symbol,
+            user: username,
           },
         });
       });
@@ -142,9 +143,8 @@ describe('escrow', () => {
         promise
           .then(() => done('Should have failed'))
           .catch(err => {
-            console.log(err);
             expect(err.message).to.contain(
-              'Cannot remove a user account who still has a remaining balance'
+              'Cannot remove a user who still has a remaining balance for this symbol'
             );
             done();
           });
@@ -359,15 +359,26 @@ describe('escrow', () => {
                   },
                 ]);
               });
-              describe('when vest is called', () => {
+              describe('when vest is called for each user', () => {
                 beforeAll(async () => {
-                  await sendTransaction({
-                    name: 'vest',
-                    account: escrow.account,
-                    data: {
-                      symbol_str: symbol,
+                  await sendTransaction([
+                    {
+                      name: 'vest',
+                      account: escrow.account,
+                      data: {
+                        symbol_str: symbol,
+                        user: user1,
+                      },
                     },
-                  });
+                    {
+                      name: 'vest',
+                      account: escrow.account,
+                      data: {
+                        symbol_str: symbol,
+                        user: user2,
+                      },
+                    },
+                  ]);
                 });
                 describe('when the currency balance is fetched for user1', () => {
                   let response;
@@ -389,13 +400,24 @@ describe('escrow', () => {
                 });
                 describe('when vest is called again', () => {
                   beforeAll(async () => {
-                    await sendTransaction({
-                      name: 'vest',
-                      account: escrow.account,
-                      data: {
-                        symbol_str: symbol,
+                    await sendTransaction([
+                      {
+                        name: 'vest',
+                        account: escrow.account,
+                        data: {
+                          symbol_str: symbol,
+                          user: user1,
+                        },
                       },
-                    });
+                      {
+                        name: 'vest',
+                        account: escrow.account,
+                        data: {
+                          symbol_str: symbol,
+                          user: user2,
+                        },
+                      },
+                    ]);
                   });
                   describe('when the currency balance is fetched again for user1', () => {
                     let response;
