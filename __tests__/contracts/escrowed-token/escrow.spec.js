@@ -163,43 +163,56 @@ describe('escrow', () => {
             });
         });
       });
-      // describe('and the user is added to escrow', () => {
-      //   beforeAll(async () => {
-      //     await sendTransaction({
-      //       name: 'addaccount',
-      //       data: {
-      //         user: actor,
-      //         total: `100 ${symbol}`,
-      //       },
-      //     });
-      //   });
+      describe('and the user is added to escrow', () => {
+        beforeAll(async () => {
+          await sendTransaction([
+            {
+              name: 'create',
+              account: token.account,
+              data: {
+                issuer: token.account,
+                maximum_supply: `100 ${symbol}`,
+              },
+            },
+            {
+              name: 'issue',
+              account: token.account,
+              data: {
+                to: escrow.account,
+                quantity: `10 ${symbol}`,
+                memo: actor,
+              },
+            },
+          ]);
+        });
 
-      //   describe('when a period is attempted to be added', () => {
-      //     let promise;
-      //     beforeAll(() => {
-      //       promise = sendTransaction({
-      //         name: 'addperiod',
-      //         data: {
-      //           symbol_str: symbol,
-      //           timestamp: new Date().getTime(),
-      //           numerator: 2,
-      //           denominator: 4,
-      //         },
-      //       });
-      //     });
+        describe('when a period is attempted to be added', () => {
+          let promise;
+          beforeAll(() => {
+            promise = sendTransaction({
+              name: 'addperiod',
+              account: escrow.account,
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime(),
+                numerator: 2,
+                denominator: 4,
+              },
+            });
+          });
 
-      //     test('then it fails due to a user already existing', done => {
-      //       promise
-      //         .then(() => done('Should not have succeeded!'))
-      //         .catch(err => {
-      //           expect(err.message).to.contain(
-      //             'Cannot add an escrow period after accounts have been added'
-      //           );
-      //           done();
-      //         });
-      //     });
-      //   });
-      // });
+          test('then it fails due to a user already existing', done => {
+            promise
+              .then(() => done('Should not have succeeded!'))
+              .catch(err => {
+                expect(err.message).to.contain(
+                  'Cannot add an escrow period after accounts have been added'
+                );
+                done();
+              });
+          });
+        });
+      });
     });
 
     describe('when a period is set to 8/12', () => {
