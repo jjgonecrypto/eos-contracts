@@ -85,12 +85,18 @@ void escrow::delaccount(name user, string symbol_str) {
  */
 void escrow::transfer(name from, name to, asset quantity, string memo) {
   // do not execute for transfers other than the ones we require
-  // NOTE: we don't assert because when we transfer back out durig vest, this
-  // method is called again, and while it isn't relevant, we don't want to fail
-  // that transfer.
-  if (from != token_contract || to != _self) {
+  eosio_assert(from == _self || (from == token_contract && to == _self),
+               "Only may be invoked either from or to the token contract");
+
+  if (from == _self) {
+    // if we're invoked where from is ourselves, then this is a receipt or our
+    // transfer back out from vest, so do nothing.
     return;
+  } else {
+    // otherwise, ensure only the token_contract itself can perform this action
+    require_auth(token_contract);
   }
+
   eosio_assert(quantity.symbol.is_valid(), "Supplied symbol must be valid");
   eosio_assert(quantity.amount > 0,
                "Amount to transfer must be greater than 0");
@@ -100,7 +106,9 @@ void escrow::transfer(name from, name to, asset quantity, string memo) {
                "Some periods must exist in order to accept incoming transfers");
 
   name recipient = name(memo);
-  eosio_assert(is_account(recipient), "Recipient must be a valid account");
+  eosio_assert(is_account(recipient),
+               "When transferring to the escrow contract, the memo must be the "
+               "valid account name of the recipient.");
 
   require_recipient(recipient);
 

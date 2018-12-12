@@ -476,6 +476,124 @@ describe('escrow', () => {
     });
   });
 
+  describe('when some user has tokens issued', () => {
+    describe('and they transfer some to the escrow account', () => {
+      let symbol;
+      let user;
+      let promise;
+      beforeAll(async () => {
+        symbol = generateSymbol();
+
+        user = eos.generateAccountName();
+        console.log('creating user: ', user);
+        await eos.createAccount({ account: user });
+        // combine actions for faster tests
+        promise = sendTransaction([
+          {
+            name: 'create',
+            account: token.account,
+            data: {
+              issuer: token.account,
+              maximum_supply: `100000.00 ${symbol}`,
+            },
+          },
+          {
+            name: 'issue',
+            account: token.account,
+            data: {
+              to: user,
+              quantity: `100.00 ${symbol}`,
+              memo: '',
+            },
+          },
+          {
+            name: 'transfer',
+            account: token.account,
+            actor: user,
+            data: {
+              from: user,
+              to: escrow.account,
+              quantity: `1.00 ${symbol}`,
+              memo: 'someuser', // this won't get processed
+            },
+          },
+        ]);
+      });
+      test('then it fails as the escrow contract cannot receive tokens from non-token accounts', done => {
+        promise
+          .then(() => done('Should not have succeeded!'))
+          .catch(err => {
+            expect(err.message).to.contain(
+              'Only may be invoked either from or to the token contract'
+            );
+            done();
+          });
+      });
+    });
+  });
+
+  describe('when tokens are issued to its own account', () => {
+    describe('and a period exists for that token', () => {
+      describe('and the token contract attempts to transfer some to the escrow account with an invalid user', () => {
+        let symbol;
+        let promise;
+        beforeAll(async () => {
+          symbol = generateSymbol();
+          // combine actions for faster tests
+          promise = sendTransaction([
+            {
+              name: 'create',
+              account: token.account,
+              data: {
+                issuer: token.account,
+                maximum_supply: `100000.00 ${symbol}`,
+              },
+            },
+            {
+              name: 'addperiod',
+              account: escrow.account,
+              data: {
+                symbol_str: symbol,
+                timestamp: new Date().getTime() - 1000 * 3600 * 24 * 28,
+                numerator: 1,
+                denominator: 1,
+              },
+            },
+            {
+              name: 'issue',
+              account: token.account,
+              data: {
+                to: token.account,
+                quantity: `999.00 ${symbol}`,
+                memo: '',
+              },
+            },
+            {
+              name: 'transfer',
+              account: token.account,
+              data: {
+                from: token.account,
+                to: escrow.account,
+                quantity: `1.00 ${symbol}`,
+                memo: 'someuser', // this user doesn't exist
+              },
+            },
+          ]);
+        });
+        test('then it fails as the user is non existant', done => {
+          promise
+            .then(() => done('Should not have succeeded!'))
+            .catch(err => {
+              expect(err.message).to.contain(
+                'When transferring to the escrow contract, the memo must be the valid account name of the recipient.'
+              );
+              done();
+            });
+        });
+      });
+    });
+  });
+
   describe('when a period of 1/3 has been added for four weeks ago', () => {
     describe('when a user is added with 100 tokens', () => {
       let symbol;
