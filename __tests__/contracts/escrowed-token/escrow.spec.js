@@ -325,6 +325,15 @@ describe('escrow', () => {
                 expect(response).to.equal(`100.00 ${symbol}`);
               });
             });
+            describe('when the currency balance in tokens fetched for user1', () => {
+              let response;
+              beforeAll(async () => {
+                [response] = await eos.api.rpc.get_currency_balance(token.account, user1);
+              });
+              test('then their balance must show nothing', () => {
+                expect(response).to.be.undefined;
+              });
+            });
             describe('when the currency balance is fetched for user2', () => {
               let response;
               beforeAll(async () => {
@@ -334,30 +343,16 @@ describe('escrow', () => {
                 expect(response).to.equal(`10.51 ${symbol}`);
               });
             });
-
-            describe('when attempting to delete the user1', () => {
-              let promise;
-              beforeAll(() => {
-                promise = sendTransaction({
-                  name: 'delaccount',
-                  account: escrow.account,
-                  data: {
-                    user: user1,
-                    symbol_str: symbol,
-                  },
-                });
+            describe('when the currency balance in tokens fetched for user2', () => {
+              let response;
+              beforeAll(async () => {
+                [response] = await eos.api.rpc.get_currency_balance(token.account, user2);
               });
-              test('then it fails as the balance is greater than 0', done => {
-                promise
-                  .then(() => done('Should have failed'))
-                  .catch(err => {
-                    expect(err.message).to.contain(
-                      'Cannot remove a user who still has a remaining balance for this symbol'
-                    );
-                    done();
-                  });
+              test('then their balance must show nothing', () => {
+                expect(response).to.be.undefined;
               });
             });
+
             describe('when vest is called for each user', () => {
               beforeAll(async () => {
                 await sendTransaction([
@@ -387,8 +382,17 @@ describe('escrow', () => {
                 test('then their balance must show the correct amount of 1/4 remaining', () => {
                   expect(response).to.equal(`25.00 ${symbol}`);
                 });
-                test('and their balance in the token account should show this transferred amount', () => {});
               });
+              describe('when the currency balance in tokens fetched for user1', () => {
+                let response;
+                beforeAll(async () => {
+                  [response] = await eos.api.rpc.get_currency_balance(token.account, user1);
+                });
+                test('then their balance must show the vested amount', () => {
+                  expect(response).to.equal(`75.00 ${symbol}`);
+                });
+              });
+
               describe('when the currency balance is fetched for user2', () => {
                 let response;
                 beforeAll(async () => {
@@ -397,7 +401,15 @@ describe('escrow', () => {
                 test('then their balance must show the correct amount of 1/4 remaining', () => {
                   expect(response).to.equal(`2.63 ${symbol}`);
                 });
-                test('and their balance in the token account should show this transferred amount', () => {});
+              });
+              describe('when the currency balance in tokens fetched for user2', () => {
+                let response;
+                beforeAll(async () => {
+                  [response] = await eos.api.rpc.get_currency_balance(token.account, user2);
+                });
+                test('then their balance must be show the vested amount', () => {
+                  expect(response).to.equal(`7.88 ${symbol}`);
+                });
               });
               describe('when vest is called again', () => {
                 beforeAll(async () => {
@@ -428,7 +440,15 @@ describe('escrow', () => {
                   test('then their balance must be unchanged', () => {
                     expect(response).to.equal(`25.00 ${symbol}`);
                   });
-                  test('and their balance in the token account must be unchanged', () => {});
+                });
+                describe('when the currency balance in tokens fetched for user1', () => {
+                  let response;
+                  beforeAll(async () => {
+                    [response] = await eos.api.rpc.get_currency_balance(token.account, user1);
+                  });
+                  test('then their balance is unchanged', () => {
+                    expect(response).to.equal(`75.00 ${symbol}`);
+                  });
                 });
                 describe('when the currency balance is fetched again for user2', () => {
                   let response;
@@ -438,7 +458,15 @@ describe('escrow', () => {
                   test('then their balance must be unchanged', () => {
                     expect(response).to.equal(`2.63 ${symbol}`);
                   });
-                  test('and their balance in the token account must be unchanged', () => {});
+                });
+                describe('when the currency balance in tokens fetched for user2', () => {
+                  let response;
+                  beforeAll(async () => {
+                    [response] = await eos.api.rpc.get_currency_balance(token.account, user2);
+                  });
+                  test('then their balance must be unchanged', () => {
+                    expect(response).to.equal(`7.88 ${symbol}`);
+                  });
                 });
               });
             });
@@ -490,6 +518,30 @@ describe('escrow', () => {
           },
         ]);
       });
+      describe('when attempting to delete the user1', () => {
+        let promise;
+        beforeAll(() => {
+          promise = sendTransaction({
+            name: 'delaccount',
+            account: escrow.account,
+            data: {
+              user: user,
+              symbol_str: symbol,
+            },
+          });
+        });
+        test('then it fails as the balance is greater than 0', done => {
+          promise
+            .then(() => done('Should have failed'))
+            .catch(err => {
+              expect(err.message).to.contain(
+                'Cannot remove a user who still has a remaining balance for this symbol'
+              );
+              done();
+            });
+        });
+      });
+
       describe('when vest is called for the user', () => {
         beforeAll(async () => {
           await sendTransaction([
@@ -585,6 +637,66 @@ describe('escrow', () => {
               });
               test('then their balance must be show this new amount', () => {
                 expect(response).to.equal(`66.66 ${symbol}`);
+              });
+            });
+
+            describe('when a period is added for the remaining 2/3 in the past', () => {
+              describe('when vested', () => {
+                describe('when attempting to delete the user', () => {
+                  let promise;
+                  beforeAll(() => {
+                    promise = sendTransaction([
+                      {
+                        name: 'addperiod',
+                        account: escrow.account,
+
+                        data: {
+                          symbol_str: symbol,
+                          timestamp: new Date().getTime() - 1000 * 3600 * 24,
+                          numerator: 2,
+                          denominator: 3,
+                        },
+                      },
+                      {
+                        name: 'vest',
+                        account: escrow.account,
+                        data: {
+                          symbol_str: symbol,
+                          user: user,
+                        },
+                      },
+                      {
+                        name: 'delaccount',
+                        account: escrow.account,
+                        data: {
+                          user: user,
+                          symbol_str: symbol,
+                        },
+                      },
+                    ]);
+                  });
+                  test('then the account is deleted as expected', () => {
+                    return promise;
+                  });
+                  describe('when the currency balance in escrow is fetched for the user', () => {
+                    let response;
+                    beforeAll(async () => {
+                      [response] = await eos.api.rpc.get_currency_balance(escrow.account, user);
+                    });
+                    test('then their balance must show undefined', () => {
+                      expect(response).to.be.undefined;
+                    });
+                  });
+                  describe('when the currency balance in tokens fetched for the user', () => {
+                    let response;
+                    beforeAll(async () => {
+                      [response] = await eos.api.rpc.get_currency_balance(token.account, user);
+                    });
+                    test('then their balance must show the full amount', () => {
+                      expect(response).to.equal(`200.00 ${symbol}`);
+                    });
+                  });
+                });
               });
             });
           });
